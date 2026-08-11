@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Paxi 飞机大战 · 付费娱乐</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body {
+            background: #0a0a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+            overflow: hidden;
+        }
+        #gameWrapper {
+            position: relative;
+            width: 100%;
+            max-width: 420px;
+            aspect-ratio: 9 / 16;
+            background: #111;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(100, 100, 255, 0.2);
+            touch-action: none;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #0a0a2a;
+            touch-action: none;
+            cursor: pointer;
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            z-index: 10;
+            font-size: 13px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
+        }
+        #hud span { background: rgba(0,0,0,0.5); padding: 4px 12px; border-radius: 20px; backdrop-filter: blur(4px); }
+
+        /* 语言切换按钮（右上角） */
+        #langSwitch {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 30;
+        }
+        #langBtn {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid #64748b;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+        }
+        #langBtn:active { background: rgba(255,255,255,0.2); }
+
+        /* 结算面板 */
+        #settlement {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            padding: 30px 20px;
+            backdrop-filter: blur(10px);
+            color: white;
+            text-align: center;
+        }
+        #settlement.show { display: flex; }
+        #settlement h1 { font-size: 28px; margin-bottom: 4px; }
+        #settlement .score-final { font-size: 48px; font-weight: 900; color: #facc15; margin: 6px 0; }
+        #settlement .info-text { font-size: 14px; color: #94a3b8; margin-bottom: 16px; }
+
+        .btn-group { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+        .btn {
+            padding: 12px 32px;
+            border-radius: 40px;
+            border: none;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+            background: #3b82f6;
+            color: white;
+            min-width: 120px;
+            box-shadow: 0 4px 15px rgba(59,130,246,0.4);
+            touch-action: manipulation;
+        }
+        .btn:active { transform: scale(0.94); }
+        .btn-primary { background: #8b5cf6; box-shadow: 0 4px 15px rgba(139,92,246,0.4); }
+        .btn-success { background: #22c55e; box-shadow: 0 4px 15px rgba(34,197,94,0.4); }
+        .btn-outline { background: transparent; border: 2px solid #64748b; box-shadow: none; }
+
+        #walletStatus {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            z-index: 15;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        #walletStatus .addr {
+            font-size: 10px;
+            color: #94a3b8;
+            background: rgba(0,0,0,0.6);
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+        #walletStatus .connect-btn {
+            padding: 6px 14px;
+            border-radius: 30px;
+            border: none;
+            background: #22c55e;
+            color: white;
+            font-weight: bold;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        #walletStatus .connect-btn:active { opacity: 0.7; }
+
+        /* 开始界面 */
+        #startOverlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 25;
+            padding: 30px;
+            backdrop-filter: blur(6px);
+        }
+        #startOverlay.hidden { display: none; }
+        #startOverlay .title { font-size: 32px; font-weight: 900; color: #fff; margin-bottom: 8px; }
+        #startOverlay .sub { font-size: 14px; color: #94a3b8; margin-bottom: 24px; text-align: center; line-height: 1.6; }
+        #startOverlay .fee { font-size: 18px; color: #facc15; font-weight: bold; margin-bottom: 20px; }
+        #startOverlay .disclaimer {
+            font-size: 11px;
+            color: #64748b;
+            background: rgba(0,0,0,0.4);
+            padding: 10px 16px;
+            border-radius: 8px;
+            margin-top: 20px;
+            max-width: 320px;
+            text-align: center;
+            line-height: 1.5;
+            white-space: pre-line;
+        }
+        .btn-play {
+            padding: 16px 48px;
+            border-radius: 60px;
+            border: none;
+            background: #8b5cf6;
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 0 30px rgba(139,92,246,0.5);
+            transition: 0.2s;
+        }
+        .btn-play:active { transform: scale(0.95); }
+        .btn-play:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div id="gameWrapper">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- HUD -->
+    <div id="hud">
+        <span>❤️ <span id="livesDisplay">3</span></span>
+        <span>🏆 <span id="scoreDisplay">0</span></span>
+        <span>💰 <span id="balanceDisplay">0.00</span></span>
+    </div>
+
+    <!-- 语言切换 -->
+    <div id="langSwitch">
+        <button id="langBtn">中/EN</button>
+    </div>
+
+    <!-- 钱包状态 -->
+    <div id="walletStatus">
+        <span class="addr" id="walletAddr">未连接</span>
+        <button class="connect-btn" id="connectBtn">🔗 连接</button>
+    </div>
+
+    <!-- 开始界面 -->
+    <div id="startOverlay">
+        <div class="title" id="startTitle">✈️ 飞机大战</div>
+        <div class="sub" id="startSub">挑战你的极限，躲避敌机</div>
+        <div class="fee" id="startFee">🎟️ 入场费：1 PAXI / 局</div>
+        <button class="btn-play" id="playBtn">🚀 开始游戏</button>
+        <div class="disclaimer" id="disclaimerText">
+            ⚠️ 本游戏为付费娱乐项目，每局消耗 1 PAXI。
+            游戏结果不产生任何代币、积分或实物奖励。
+            请理性消费，量力而行。
+        </div>
+    </div>
+
+    <!-- 结算面板 -->
+    <div id="settlement">
+        <h1 id="settlementTitle">💥 坠毁</h1>
+        <div class="score-final" id="finalScore">0</div>
+        <div class="info-text" id="settlementInfo">你已尽力，再来一局吧</div>
+        <div class="btn-group">
+            <button class="btn btn-primary" id="restartBtn">🔄 再来一局</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// 0. 语言包
+// ============================================================
+const LANG = {
+    zh: {
+        title: '✈️ 飞机大战',
+        subtitle: '挑战你的极限，躲避敌机',
+        entryFeeLabel: '🎟️ 入场费：{fee} PAXI / 局',
+        playBtn: '🚀 开始游戏',
+        paying: '⏳ 支付中...',
+        disclaimer: '⚠️ 本游戏为付费娱乐项目，每局消耗 {fee} PAXI。\n游戏结果不产生任何代币、积分或实物奖励。\n请理性消费，量力而行。',
+        settlementTitle: '💥 坠毁',
+        settlementInfo: '你已尽力，再来一局吧',
+        restartBtn: '🔄 再来一局',
+        connectBtn: '🔗 连接',
+        connected: '✅ 已连接',
+        notConnected: '未连接',
+        installWallet: '请先安装 PaxiHub 钱包',
+        connectFailed: '连接失败：',
+        insufficientBalance: '余额不足！需要 {fee} PAXI，当前余额 {balance} PAXI',
+        payFailed: '支付失败：',
+        sdkNotLoaded: 'SDK 未加载',
+        paySuccess: '✅ 入场费支付成功',
+    },
+    en: {
+        title: '✈️ Space Shooter',
+        subtitle: 'Challenge your limits, dodge enemies',
+        entryFeeLabel: '🎟️ Entry Fee: {fee} PAXI / game',
+        playBtn: '🚀 Start Game',
+        paying: '⏳ Paying...',
+        disclaimer: '⚠️ This game is a paid entertainment. Each game consumes {fee} PAXI.\nNo tokens, points, or rewards will be given for any game result.\nPlay responsibly.',
+        settlementTitle: '💥 Crashed',
+        settlementInfo: 'You did your best, try again',
+        restartBtn: '🔄 Play Again',
+        connectBtn: '🔗 Connect',
+        connected: '✅ Connected',
+        notConnected: 'Not connected',
+        installWallet: 'Please install PaxiHub wallet first',
+        connectFailed: 'Connection failed: ',
+        insufficientBalance: 'Insufficient balance! Need {fee} PAXI, current balance {balance} PAXI',
+        payFailed: 'Payment failed: ',
+        sdkNotLoaded: 'SDK not loaded',
+        paySuccess: '✅ Entry fee paid successfully',
+    }
+};
+
+let currentLang = localStorage.getItem('plane_lang') || 'zh';
+
+function t(key, params) {
+    let text = LANG[currentLang][key] || LANG['zh'][key] || key;
+    if (params) {
+        for (const [k, v] of Object.entries(params)) {
+            text = text.replace(new RegExp(`{${k}}`, 'g'), v);
+        }
+    }
+    return text;
+}
+
+// ============================================================
+// 1. 游戏引擎 (保持不变)
+// ============================================================
+(function() {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const CANVAS_W = 360;
+    const CANVAS_H = 640;
+    canvas.width = CANVAS_W;
+    canvas.height = CANVAS_H;
+
+    const livesSpan = document.getElementById('livesDisplay');
+    const scoreSpan = document.getElementById('scoreDisplay');
+
+    let game = {
+        running: false,
+        over: false,
+        score: 0,
+        lives: 3,
+        frame: 0,
+        difficulty: 1,
+        spawnCounter: 0,
+        enemyBullets: [],
+        enemies: [],
+        bullets: [],
+        particles: [],
+        stars: [],
+        player: { x: CANVAS_W/2, y: CANVAS_H - 80, w: 28, h: 28, speed: 5 }
+    };
+
+    for (let i = 0; i < 80; i++) {
+        game.stars.push({
+            x: Math.random() * CANVAS_W,
+            y: Math.random() * CANVAS_H,
+            size: Math.random() * 2 + 0.5,
+            speed: Math.random() * 1.5 + 0.5
+        });
+    }
+
+    function drawPlayer() {
+        const p = game.player;
+        ctx.shadowColor = '#8b5cf6';
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = '#60a5fa';
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y - 18);
+        ctx.lineTo(p.x - 16, p.y + 12);
+        ctx.lineTo(p.x + 16, p.y + 12);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#93c5fd';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y - 4, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(p.x - 10, p.y + 6, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.arc(p.x + 10, p.y + 6, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+
+    function spawnEnemy() {
+        const types = [
+            { w: 24, h: 24, hp: 1, speed: 1.5, score: 10, color: '#f87171' },
+            { w: 30, h: 30, hp: 2, speed: 1.0, score: 20, color: '#fbbf24' },
+            { w: 18, h: 18, hp: 1, speed: 2.5, score: 15, color: '#a78bfa' }
+        ];
+        const type = types[Math.floor(Math.random() * types.length)];
+        const x = Math.random() * (CANVAS_W - 40) + 20;
+        game.enemies.push({
+            x, y: -30,
+            w: type.w, h: type.h,
+            hp: type.hp,
+            maxHp: type.hp,
+            speed: type.speed + (game.difficulty - 1) * 0.15,
+            score: type.score,
+            color: type.color,
+            shootTimer: 0,
+            shootInterval: 60 + Math.random() * 60
+        });
+    }
+
+    function shootBullet() {
+        const p = game.player;
+        game.bullets.push({ x: p.x, y: p.y - 22, w: 4, h: 16, speed: 7, damage: 1 });
+        game.bullets.push({ x: p.x - 10, y: p.y - 16, w: 4, h: 14, speed: 6.5, damage: 1 });
+        game.bullets.push({ x: p.x + 10, y: p.y - 16, w: 4, h: 14, speed: 6.5, damage: 1 });
+    }
+
+    function createExplosion(x, y, color, count = 20) {
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 4 + 1;
+            game.particles.push({
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 1,
+                life: 30 + Math.random() * 20,
+                maxLife: 50,
+                size: Math.random() * 4 + 2,
+                color: color || '#facc15'
+            });
+        }
+    }
+
+    function rectCollide(a, b) {
+        return a.x - a.w/2 < b.x + b.w/2 &&
+               a.x + a.w/2 > b.x - b.w/2 &&
+               a.y - a.h/2 < b.y + b.h/2 &&
+               a.y + a.h/2 > b.y - b.h/2;
+    }
+
+    function update() {
+        if (!game.running || game.over) return;
+        const p = game.player;
+        game.frame++;
+
+        game.difficulty = 1 + Math.floor(game.frame / 3000);
+
+        game.spawnCounter++;
+        const spawnRate = Math.max(15, 50 - game.difficulty * 2);
+        if (game.spawnCounter > spawnRate) {
+            spawnEnemy();
+            game.spawnCounter = 0;
+            if (game.difficulty > 3 && Math.random() < 0.2) spawnEnemy();
+        }
+
+        if (game.frame % 10 === 0) shootBullet();
+
+        for (let i = game.bullets.length - 1; i >= 0; i--) {
+            const b = game.bullets[i];
+            b.y -= b.speed;
+            if (b.y < -20) { game.bullets.splice(i, 1); continue; }
+            let hit = false;
+            for (let j = game.enemies.length - 1; j >= 0; j--) {
+                const e = game.enemies[j];
+                if (rectCollide({x:b.x, y:b.y, w:b.w, h:b.h}, {x:e.x, y:e.y, w:e.w, h:e.h})) {
+                    e.hp -= b.damage;
+                    if (e.hp <= 0) {
+                        game.score += e.score;
+                        createExplosion(e.x, e.y, e.color, 25);
+                        game.enemies.splice(j, 1);
+                        updateScoreUI();
+                    } else {
+                        createExplosion(e.x, e.y, '#ffffff', 6);
+                    }
+                    hit = true;
+                    break;
+                }
+            }
+            if (hit) { game.bullets.splice(i, 1); }
+        }
+
+        for (let i = game.enemies.length - 1; i >= 0; i--) {
+            const e = game.enemies[i];
+            e.y += e.speed;
+            e.shootTimer++;
+            if (e.shootTimer > e.shootInterval && e.y > 30 && e.y < CANVAS_H * 0.6) {
+                e.shootTimer = 0;
+                game.enemyBullets.push({
+                    x: e.x, y: e.y + e.h/2,
+                    w: 6, h: 12,
+                    speed: 3 + game.difficulty * 0.3
+                });
+            }
+            if (e.y > CANVAS_H + 30) {
+                game.enemies.splice(i, 1);
+                continue;
+            }
+            if (rectCollide({x:p.x, y:p.y, w:p.w, h:p.h}, {x:e.x, y:e.y, w:e.w, h:e.h})) {
+                createExplosion(p.x, p.y, '#ef4444', 40);
+                game.lives--;
+                game.enemies.splice(i, 1);
+                updateLivesUI();
+                if (game.lives <= 0) { gameOver(); return; }
+            }
+        }
+
+        for (let i = game.enemyBullets.length - 1; i >= 0; i--) {
+            const b = game.enemyBullets[i];
+            b.y += b.speed;
+            if (b.y > CANVAS_H + 20) { game.enemyBullets.splice(i, 1); continue; }
+            if (rectCollide({x:p.x, y:p.y, w:p.w, h:p.h}, {x:b.x, y:b.y, w:b.w, h:b.h})) {
+                createExplosion(p.x, p.y, '#ef4444', 30);
+                game.lives--;
+                game.enemyBullets.splice(i, 1);
+                updateLivesUI();
+                if (game.lives <= 0) { gameOver(); return; }
+            }
+        }
+
+        for (let i = game.particles.length - 1; i >= 0; i--) {
+            const pt = game.particles[i];
+            pt.x += pt.vx;
+            pt.y += pt.vy;
+            pt.vy += 0.05;
+            pt.life--;
+            if (pt.life <= 0) { game.particles.splice(i, 1); }
+        }
+
+        for (const star of game.stars) {
+            star.y += star.speed;
+            if (star.y > CANVAS_H) { star.y = 0; star.x = Math.random() * CANVAS_W; }
+        }
+
+        p.x = Math.max(20, Math.min(CANVAS_W - 20, p.x));
+        p.y = Math.max(40, Math.min(CANVAS_H - 30, p.y));
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+        for (const star of game.stars) {
+            ctx.fillStyle = `rgba(255,255,255,${0.3 + Math.random()*0.3})`;
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        for (const pt of game.particles) {
+            const alpha = pt.life / pt.maxLife;
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = pt.color;
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, pt.size * alpha, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        ctx.fillStyle = '#60f5fa';
+        ctx.shadowColor = '#60f5fa';
+        ctx.shadowBlur = 12;
+        for (const b of game.bullets) {
+            ctx.fillRect(b.x - b.w/2, b.y - b.h/2, b.w, b.h);
+        }
+
+        ctx.fillStyle = '#f87171';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 10;
+        for (const b of game.enemyBullets) {
+            ctx.fillRect(b.x - b.w/2, b.y - b.h/2, b.w, b.h);
+        }
+        ctx.shadowBlur = 0;
+
+        for (const e of game.enemies) {
+            ctx.shadowColor = e.color;
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = e.color;
+            ctx.beginPath();
+            ctx.ellipse(e.x, e.y, e.w/2, e.h/2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(e.x, e.y - 4, e.w/6, e.h/4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            if (e.maxHp > 1) {
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(e.x - 12, e.y - e.h/2 - 8, 24, 4);
+                ctx.fillStyle = '#22c55e';
+                ctx.fillRect(e.x - 12, e.y - e.h/2 - 8, 24 * (e.hp/e.maxHp), 4);
+            }
+        }
+
+        drawPlayer();
+        ctx.shadowBlur = 0;
+
+        if (game.lives === 1) {
+            ctx.strokeStyle = `rgba(255,0,0,${0.2 + Math.sin(Date.now()/200)*0.15})`;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(4, 4, CANVAS_W - 8, CANVAS_H - 8);
+        }
+    }
+
+    function updateScoreUI() { scoreSpan.textContent = game.score; }
+    function updateLivesUI() { livesSpan.textContent = game.lives; }
+
+    function gameOver() {
+        if (game.over) return;
+        game.running = false;
+        game.over = true;
+        document.getElementById('finalScore').textContent = game.score;
+        document.getElementById('settlement').classList.add('show');
+    }
+
+    function gameLoop() {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function startGame() {
+        game.running = true;
+        game.over = false;
+        game.score = 0;
+        game.lives = 3;
+        game.frame = 0;
+        game.difficulty = 1;
+        game.enemies = [];
+        game.bullets = [];
+        game.enemyBullets = [];
+        game.particles = [];
+        game.player.x = CANVAS_W/2;
+        game.player.y = CANVAS_H - 80;
+        updateScoreUI();
+        updateLivesUI();
+        document.getElementById('settlement').classList.remove('show');
+        document.getElementById('startOverlay').classList.add('hidden');
+    }
+
+    // 触屏控制
+    let isDragging = false;
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = CANVAS_W / rect.width;
+        const scaleY = CANVAS_H / rect.height;
+        game.player.x = (touch.clientX - rect.left) * scaleX;
+        game.player.y = (touch.clientY - rect.top) * scaleY;
+        isDragging = true;
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (!isDragging) return;
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = CANVAS_W / rect.width;
+        const scaleY = CANVAS_H / rect.height;
+        game.player.x = (touch.clientX - rect.left) * scaleX;
+        game.player.y = (touch.clientY - rect.top) * scaleY;
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => { e.preventDefault(); isDragging = false; }, { passive: false });
+
+    canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = CANVAS_W / rect.width;
+        const scaleY = CANVAS_H / rect.height;
+        game.player.x = (e.clientX - rect.left) * scaleX;
+        game.player.y = (e.clientY - rect.top) * scaleY;
+        isDragging = true;
+    });
+    canvas.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = CANVAS_W / rect.width;
+        const scaleY = CANVAS_H / rect.height;
+        game.player.x = (e.clientX - rect.left) * scaleX;
+        game.player.y = (e.clientY - rect.top) * scaleY;
+    });
+    canvas.addEventListener('mouseup', () => { isDragging = false; });
+
+    // 重新开始按钮（付费重玩）
+    document.getElementById('restartBtn').addEventListener('click', () => {
+        document.getElementById('startOverlay').classList.remove('hidden');
+        document.getElementById('settlement').classList.remove('show');
+    });
+
+    window.__startGame = startGame;
+    window.__gameEngine = { startGame };
+
+    console.log('🎮 飞机大战引擎已加载');
+})();
+
+// ============================================================
+// 2. 钱包交互 & 付费入场（双语支持）
+// ============================================================
+(function() {
+    const CONFIG = {
+        lcd: 'https://mainnet-lcd.paxinet.io',
+        denom: 'upaxi',
+        feeCollector: 'paxi1rdarmm997hqwfdgl9wvnpffe28zmex3kfyg7xd', // 请替换为你的收款地址
+        entryFee: 1, // PAXI
+    };
+
+    let wallet = { address: null, publicKey: null, connected: false };
+    let balance = '0';
+    let isPaying = false;
+
+    // DOM 元素
+    const balanceDisplay = document.getElementById('balanceDisplay');
+    const walletAddrEl = document.getElementById('walletAddr');
+    const connectBtn = document.getElementById('connectBtn');
+    const playBtn = document.getElementById('playBtn');
+    const langBtn = document.getElementById('langBtn');
+
+    // ========== 语言更新函数 ==========
+    function updateUI() {
+        // 静态文本
+        document.getElementById('startTitle').textContent = t('title');
+        document.getElementById('startSub').textContent = t('subtitle');
+        document.getElementById('startFee').textContent = t('entryFeeLabel', { fee: CONFIG.entryFee });
+        document.getElementById('disclaimerText').textContent = t('disclaimer', { fee: CONFIG.entryFee });
+        document.getElementById('settlementTitle').textContent = t('settlementTitle');
+        document.getElementById('settlementInfo').textContent = t('settlementInfo');
+        document.getElementById('restartBtn').textContent = t('restartBtn');
+
+        // 按钮状态根据连接情况
+        if (wallet.connected) {
+            connectBtn.textContent = t('connected');
+            walletAddrEl.textContent = wallet.address.slice(0, 10) + '...' + wallet.address.slice(-6);
+        } else {
+            connectBtn.textContent = t('connectBtn');
+            walletAddrEl.textContent = t('notConnected');
+        }
+
+        // 开始按钮（如果不在支付中）
+        if (!isPaying) {
+            playBtn.textContent = t('playBtn');
+        }
+        // 语言按钮本身不变
+        langBtn.textContent = currentLang === 'zh' ? 'EN' : '中';
+    }
+
+    // 切换语言
+    function toggleLang() {
+        currentLang = currentLang === 'zh' ? 'en' : 'zh';
+        localStorage.setItem('plane_lang', currentLang);
+        updateUI();
+    }
+    langBtn.addEventListener('click', toggleLang);
+
+    // ========== 钱包连接 ==========
+    async function connectWallet() {
+        if (typeof window.paxihub === 'undefined') {
+            alert(t('installWallet'));
+            return;
+        }
+        try {
+            const sender = await window.paxihub.paxi.getAddress();
+            wallet.address = sender.address;
+            wallet.publicKey = sender.public_key;
+            wallet.connected = true;
+            await refreshBalance();
+            updateUI();
+            playBtn.disabled = false;
+        } catch (e) {
+            alert(t('connectFailed') + e.message);
+        }
+    }
+
+    async function refreshBalance() {
+        if (!wallet.connected) return;
+        try {
+            const res = await fetch(`${CONFIG.lcd}/cosmos/bank/v1beta1/balances/${wallet.address}`);
+            const data = await res.json();
+            const found = data.balances?.find(b => b.denom === CONFIG.denom);
+            balance = found ? (parseInt(found.amount) / 1e6).toFixed(6) : '0';
+            balanceDisplay.textContent = balance;
+        } catch (e) {
+            console.warn('刷新余额失败:', e);
+        }
+    }
+
+    // ========== 付费入场 ==========
+    async function payEntryFee() {
+        if (!wallet.connected) {
+            alert(t('connectBtn') + ' ' + t('connectFailed')); // 简单提示
+            return false;
+        }
+        if (isPaying) return false;
+
+        const feeMicro = (CONFIG.entryFee * 1e6).toFixed(0);
+        if (parseFloat(balance) < CONFIG.entryFee) {
+            alert(t('insufficientBalance', { fee: CONFIG.entryFee, balance: balance }));
+            return false;
+        }
+
+        isPaying = true;
+        playBtn.disabled = true;
+        playBtn.textContent = t('paying');
+
+        try {
+            if (typeof PaxiCosmJS === 'undefined') {
+                throw new Error(t('sdkNotLoaded'));
+            }
+            const msg = PaxiCosmJS.MsgSend.fromPartial({
+                fromAddress: wallet.address,
+                toAddress: CONFIG.feeCollector,
+                amount: [{ denom: CONFIG.denom, amount: feeMicro }]
+            });
+            const msgAny = PaxiCosmJS.Any.fromPartial({
+                typeUrl: '/cosmos.bank.v1beta1.MsgSend',
+                value: PaxiCosmJS.MsgSend.encode(msg).finish(),
+            });
+
+            if (typeof buildSignAndBroadcast === 'function') {
+                const result = await buildSignAndBroadcast(
+                    [msgAny],
+                    '飞机大战 入场费',
+                    null,
+                    wallet
+                );
+                const txResult = checkTxResult ? checkTxResult(result) : { ok: result?.code === 0 };
+                if (txResult.ok) {
+                    console.log('✅ 入场费支付成功');
+                    await refreshBalance();
+                    if (window.__startGame) window.__startGame();
+                    return true;
+                } else {
+                    throw new Error(txResult.rawLog || t('payFailed'));
+                }
+            } else {
+                alert(t('sdkNotLoaded'));
+                return false;
+            }
+        } catch (e) {
+            console.error('支付失败:', e);
+            alert(t('payFailed') + e.message);
+            return false;
+        } finally {
+            isPaying = false;
+            playBtn.disabled = false;
+            playBtn.textContent = t('playBtn');
+        }
+    }
+
+    // 按钮事件
+    connectBtn.addEventListener('click', connectWallet);
+    playBtn.addEventListener('click', payEntryFee);
+
+    // 初始更新UI
+    updateUI();
+
+    // 暴露钱包状态
+    window.__wallet = { connectWallet, refreshBalance, payEntryFee };
+
+    console.log('🔗 钱包模块加载完成 (双语版)');
+})();
+</script>
+</body>
+</html>
