@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Paxi 合约发现</title>
+  <meta name="description" content="Paxi Network 智能合约发现平台 - 浏览链上所有合约，收藏关注，查询详情">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'&gt;&lt;rect width='32' height='32' rx='6' fill='%238b5cf6'/&gt;&lt;text x='16' y='22' font-size='18' text-anchor='middle' fill='white'&gt;C&lt;/text&gt;&lt;/svg&gt;">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg-card: #1e293b;
+      --bg-hover: #334155;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --primary: #8b5cf6;
+      --primary-hover: #a78bfa;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --border: #334155;
+      --radius: 12px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      overscroll-behavior-y: none;
+    }
+
+    /* ===== Header ===== */
+    .header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .logo {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 16px; color: white;
+      flex-shrink: 0;
+    }
+    .header-title { font-size: 15px; font-weight: 700; white-space: nowrap; }
+    .header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; flex-wrap: wrap; }
+    .network-select {
+      padding: 6px 8px; font-size: 11px; border-radius: 6px;
+      background: var(--bg); color: var(--text); border: 1px solid var(--border);
+      font-family: sans-serif;
+    }
+    .btn {
+      padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer;
+      font-size: 14px; font-weight: 600; transition: all 0.15s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      min-height: 44px;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:active { background: var(--primary-hover); }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-outline:active { background: var(--bg-hover); }
+    .btn-sm { padding: 6px 10px; font-size: 12px; min-height: 32px; }
+    .btn-xs { padding: 3px 8px; font-size: 11px; min-height: 26px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ===== Main ===== */
+    .main { max-width: 900px; margin: 0 auto; padding: 12px 16px; padding-bottom: calc(16px + var(--safe-bottom)); }
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+    }
+    .card-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .card-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
+    input[type="text"], select {
+      width: 100%; padding: 10px 12px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text);
+      font-size: 14px; font-family: inherit;
+      transition: border-color 0.15s; -webkit-appearance: none;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--primary); }
+
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid var(--border); border-top-color: var(--primary);
+      border-radius: 50%; animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .status-msg {
+      padding: 10px 14px; border-radius: 8px; font-size: 13px;
+      font-weight: 500; margin-top: 12px; display: none; word-break: break-word;
+    }
+    .status-msg.success { background: rgba(34,197,94,0.15); color: var(--success); display: block; }
+    .status-msg.error { background: rgba(239,68,68,0.15); color: var(--danger); display: block; }
+    .status-msg.info { background: rgba(139,92,246,0.15); color: var(--primary); display: block; }
+    .status-msg.warning { background: rgba(245,158,11,0.15); color: var(--warning); display: block; }
+
+    /* ===== Tabs ===== */
+    .tabs {
+      display: flex; gap: 4px; margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+    }
+    .tab {
+      padding: 8px 14px; cursor: pointer; font-size: 13px;
+      font-weight: 600; color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      white-space: nowrap; transition: all 0.15s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab .badge {
+      background: var(--bg); color: var(--text-muted);
+      font-size: 10px; padding: 1px 7px; border-radius: 999px;
+      border: 1px solid var(--border);
+    }
+    .tab.active .badge { background: var(--primary); color: white; border-color: var(--primary); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ===== 统计卡片 ===== */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 8px; margin-bottom: 12px;
+    }
+    @media (max-width: 500px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    .stat-item {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 8px; text-align: center;
+    }
+    .stat-num { font-size: 20px; font-weight: 800; color: var(--primary); line-height: 1.2; }
+    .stat-label { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ===== 搜索筛选 ===== */
+    .search-bar {
+      display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .search-bar input { flex: 1; min-width: 150px; }
+    .search-bar select { width: auto; min-width: 120px; }
+
+    /* ===== 合约列表 ===== */
+    .contract-list { display: flex; flex-direction: column; gap: 8px; }
+    .contract-item {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px;
+      cursor: pointer; transition: all 0.15s;
+      position: relative;
+    }
+    .contract-item:hover { border-color: var(--primary); background: var(--bg-hover); }
+    .contract-item-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 8px; margin-bottom: 6px;
+    }
+    .contract-name {
+      font-size: 14px; font-weight: 700; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      flex: 1;
+    }
+    .fav-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: 16px; padding: 2px 6px;
+      opacity: 0.6; transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .fav-btn:hover { opacity: 1; transform: scale(1.2); }
+    .fav-btn.active { opacity: 1; }
+    .contract-addr {
+      font-family: 'SF Mono', Consolas, Monaco, monospace;
+      font-size: 11px; color: var(--text-muted);
+      word-break: break-all;
+    }
+    .contract-meta {
+      display: flex; gap: 12px; flex-wrap: wrap;
+      margin-top: 8px; font-size: 11px; color: var(--text-muted);
+    }
+    .contract-meta span { display: flex; align-items: center; gap: 4px; }
+    .contract-tag {
+      display: inline-block; font-size: 10px; padding: 1px 8px;
+      border-radius: 999px; background: rgba(139,92,246,0.15);
+      color: var(--primary); font-weight: 600;
+    }
+
+    /* ===== 分页 ===== */
+    .pagination {
+      display: flex; justify-content: center; align-items: center;
+      gap: 8px; margin-top: 16px;
+    }
+    .page-info { font-size: 12px; color: var(--text-muted); }
+
+    /* ===== 加载状态 ===== */
+    .loading-state, .empty-state {
+      text-align: center; padding: 40px 20px;
+      color: var(--text-muted); font-size: 13px;
+    }
+    .loading-icon, .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+
+    /* ===== 合约详情弹窗 ===== */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 200; display: none;
+      align-items: flex-start; justify-content: center;
+      padding: 20px 10px; overflow-y: auto;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 14px; max-width: 700px; width: 100%;
+      max-height: 90vh; overflow-y: auto;
+      position: relative;
+    }
+    .modal-header {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--bg-card); border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 10px;
+    }
+    .modal-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .modal-title-text {
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .modal-close {
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); width: 30px; height: 30px;
+      border-radius: 50%; cursor: pointer; font-size: 14px;
+      flex-shrink: 0;
+    }
+    .modal-body { padding: 16px; }
+
+    /* ===== 详情内容 ===== */
+    .info-grid {
+      display: grid; grid-template-columns: auto 1fr;
+      gap: 6px 14px; font-size: 13px;
+      margin-bottom: 16px;
+    }
+    .info-label { color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+    .info-value {
+      word-break: break-all; font-family: 'SF Mono', Consolas, Monaco, monospace;
+      font-size: 12px;
+    }
+    .info-value.plain { font-family: inherit; font-size: 13px; }
+
+    .copy-btn {
+      background: none; border: none; color: var(--text-muted);
+      cursor: pointer; font-size: 11px; padding: 2px 6px;
+      border-radius: 4px; margin-left: 4px;
+    }
+    .copy-btn:hover { background: var(--bg-hover); color: var(--text); }
+
+    .detail-tabs {
+      display: flex; gap: 4px; margin-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+    }
+    .detail-tab {
+      padding: 6px 12px; cursor: pointer; font-size: 12px;
+      font-weight: 600; color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      white-space: nowrap; transition: all 0.15s;
+    }
+    .detail-tab:hover { color: var(--text); }
+    .detail-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .detail-tab-content { display: none; }
+    .detail-tab-content.active { display: block; }
+
+    /* ===== 交易列表 ===== */
+    .tx-item {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px; margin-bottom: 8px;
+    }
+    .tx-header {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 8px; flex-wrap: wrap; margin-bottom: 6px;
+    }
+    .tx-hash {
+      font-family: 'SF Mono', Consolas, Monaco, monospace;
+      font-size: 11px; font-weight: 700; color: var(--primary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      max-width: 55%;
+    }
+    .tx-status {
+      font-size: 10px; padding: 2px 8px; border-radius: 999px; font-weight: 700;
+    }
+    .tx-status.success { background: rgba(34,197,94,0.15); color: var(--success); }
+    .tx-status.failed { background: rgba(239,68,68,0.15); color: var(--danger); }
+    .tx-meta {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      font-size: 10px; color: var(--text-muted);
+    }
+
+    /* ===== JSON 展示 ===== */
+    .json-box {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px;
+      font-family: 'SF Mono', Consolas, Monaco, monospace;
+      font-size: 11px; line-height: 1.6;
+      max-height: 350px; overflow: auto;
+      white-space: pre-wrap; word-break: break-all;
+    }
+    .json-key { color: #c084fc; }
+    .json-string { color: #86efac; }
+    .json-number { color: #fcd34d; }
+    .json-boolean { color: #60a5fa; }
+    .json-null { color: #f87171; }
+
+    /* ===== 智能查询 ===== */
+    .query-templates {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;
+    }
+    .query-tpl {
+      font-size: 10px; padding: 3px 10px; border-radius: 999px;
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--text-muted); cursor: pointer;
+      transition: all 0.15s;
+    }
+    .query-tpl:hover { border-color: var(--primary); color: var(--primary); }
+    textarea {
+      width: 100%; padding: 10px 12px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text);
+      font-family: 'SF Mono', Consolas, Monaco, monospace;
+      font-size: 12px; resize: vertical;
+    }
+    textarea:focus { outline: none; border-color: var(--primary); }
+
+    /* ===== Toast ===== */
+    .toast {
+      position: fixed; bottom: calc(16px + var(--safe-bottom));
+      left: 50%; transform: translateX(-50%);
+      background: var(--bg-card); border: 1px solid var(--border);
+      padding: 10px 18px; border-radius: 10px;
+      font-size: 13px; font-weight: 600; z-index: 300;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+      max-width: 90vw; text-align: center;
+    }
+    .toast.success { border-color: var(--success); color: var(--success); }
+    .toast.error { border-color: var(--danger); color: var(--danger); }
+
+    /* ===== 加载更多 ===== */
+    .load-more {
+      text-align: center; margin-top: 12px;
+    }
+
+    /* ===== 导出按钮组 ===== */
+    .export-btns {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    /* ===== 移动端 ===== */
+    @media (max-width: 767px) {
+      .header { padding: 8px 12px; gap: 4px; }
+      .header-left { width: 100%; justify-content: center; }
+      .header-right { width: 100%; justify-content: center; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .header-right > * { flex-shrink: 0; }
+      .header-title { font-size: 14px; }
+      .logo { width: 26px; height: 26px; font-size: 13px; border-radius: 6px; }
+      .main { padding: 10px 12px; }
+      .card { padding: 12px; }
+      .info-grid { grid-template-columns: 1fr; gap: 4px; }
+      .info-label { margin-top: 4px; }
+    }
+    @media (min-width: 768px) {
+      .main { padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- ===== HEADER ===== -->
+  <div class="header">
+    <div class="header-left">
+      <button class="btn btn-outline btn-sm" onclick="goBack()" style="min-height:32px;padding:4px 10px;">←</button>
+      <div class="logo">C</div>
+      <div>
+        <div class="header-title" id="pageTitle">Paxi 合约发现</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <select id="networkSel" class="network-select" onchange="onNetworkChange()">
+        <option value="mainnet">主网</option>
+        <option value="testnet">测试网</option>
+      </select>
+      <select id="langSel" class="network-select" onchange="onLangChange()">
+        <option value="zh">中文</option>
+        <option value="en">EN</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- ===== 统计概览 ===== -->
+    <div class="card">
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-num" id="statCodes">--</div>
+          <div class="stat-label" id="statCodesLabel">Code 数量</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="statContracts">--</div>
+          <div class="stat-label" id="statContractsLabel">合约总数</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="statFav">0</div>
+          <div class="stat-label" id="statFavLabel">我的收藏</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="statLoaded">--</div>
+          <div class="stat-label" id="statLoadedLabel">已加载</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="loadAllContracts()" id="btnLoadAll">
+          🔄 <span id="btnLoadText">加载全部合约</span>
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="exportAllFav()">
+          📥 <span id="btnExportText">导出收藏</span>
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="exportAllContracts()" id="btnExportAll" style="display:none;">
+          📤 <span id="btnExportAllText">导出全部</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== 主 Tabs ===== -->
+    <div class="card">
+      <div class="tabs">
+        <div class="tab active" data-tab="all" onclick="switchMainTab('all')">
+          📋 <span id="tabAll">全部合约</span>
+          <span class="badge" id="badgeAll">0</span>
+        </div>
+        <div class="tab" data-tab="fav" onclick="switchMainTab('fav')">
+          ⭐ <span id="tabFav">我的收藏</span>
+          <span class="badge" id="badgeFav">0</span>
+        </div>
+      </div>
+
+      <!-- 全部合约 -->
+      <div class="tab-content active" id="tab-all">
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="🔍 搜索地址/名称..." oninput="renderContractList()">
+          <select id="sortSelect" onchange="renderContractList()" style="font-family:sans-serif;">
+            <option value="code_desc" id="sortCodeDesc">Code ID ↓</option>
+            <option value="code_asc" id="sortCodeAsc">Code ID ↑</option>
+            <option value="name_asc" id="sortNameAsc">名称 A-Z</option>
+          </select>
+        </div>
+        <div id="contractList">
+          <div class="loading-state">
+            <div class="spinner" style="width:32px;height:32px;border-width:3px;"></div>
+            <div style="margin-top:10px;" id="loadingText">正在加载合约列表...</div>
+          </div>
+        </div>
+        <div class="load-more" id="loadMoreWrap" style="display:none;">
+          <button class="btn btn-outline btn-sm" onclick="loadMoreContracts()" id="btnLoadMore">
+            加载更多
+          </button>
+        </div>
+      </div>
+
+      <!-- 我的收藏 -->
+      <div class="tab-content" id="tab-fav">
+        <div class="export-btns">
+          <button class="btn btn-primary btn-sm" onclick="exportFav('json')">
+            📄 导出 JSON
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="exportFav('csv')">
+            📊 导出 CSV
+          </button>
+        </div>
+        <div id="favList">
+          <div class="empty-state">
+            <div class="empty-icon">⭐</div>
+            <div id="favEmptyTip">还没有收藏任何合约</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:20px;"></div>
+  </div>
+
+  <!-- ===== 合约详情弹窗 ===== -->
+  <div class="modal-overlay" id="detailModal" onclick="if(event.target===this)closeDetail()">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span id="detailIcon">📄</span>
+          <span class="modal-title-text" id="detailTitle">合约详情</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="fav-btn" id="detailFavBtn" onclick="toggleFavCurrent()" title="收藏">☆</button>
+          <button class="modal-close" onclick="closeDetail()">✕</button>
+        </div>
+      </div>
+      <div class="modal-body" id="detailBody">
+        <!-- 动态渲染 -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ============================================================
+  //  Paxi 合约发现平台
+  //  - 自动获取链上所有合约
+  //  - 浏览、搜索、筛选、排序
+  //  - 收藏关注、导出
+  //  - 合约详情（信息/交易/代码/智能查询）
+  // ============================================================
+
+  // ---------- i18n ----------
+  const I18N = {
+    zh: {
+      title: 'Paxi 合约发现',
+      statCodesLabel: 'Code 数量',
+      statContractsLabel: '合约总数',
+      statFavLabel: '我的收藏',
+      statLoadedLabel: '已加载',
+      btnLoadText: '加载全部合约',
+      btnExportText: '导出收藏',
+      btnExportAllText: '导出全部',
+      tabAll: '全部合约',
+      tabFav: '我的收藏',
+      sortCodeDesc: 'Code ID ↓',
+      sortCodeAsc: 'Code ID ↑',
+      sortNameAsc: '名称 A-Z',
+      loadingText: '正在加载合约列表...',
+      loadMore: '加载更多',
+      favEmptyTip: '还没有收藏任何合约',
+      copyOk: '已复制',
+      // 详情 Tabs
+      dInfo: '基本信息',
+      dTxs: '交易历史',
+      dCode: '代码详情',
+      dQuery: '智能查询',
+      // 详情字段
+      lblAddr: '合约地址',
+      lblLabel: '合约名称',
+      lblCodeId: 'Code ID',
+      lblCreator: '创建者',
+      lblAdmin: '管理员',
+      lblInitMsg: '实例化消息',
+      lblCreated: '创建区块',
+      lblCodeCreator: '上传者',
+      lblDataHash: 'Data Hash',
+      lblPerm: 'Instantiate 权限',
+      lblRawCode: '原始代码信息',
+      lblQueryMsg: '查询消息 (JSON)',
+      lblQueryResult: '查询结果',
+      btnExecQuery: '执行查询',
+      txEmpty: '暂无交易记录',
+      querying: '查询中...',
+      queryFail: '查询失败',
+      querySuccess: '查询成功',
+      queryEmpty: '请输入查询消息',
+      queryInvalid: 'JSON 格式错误',
+      invAddr: '请输入有效地址',
+      favAdd: '已添加收藏',
+      favRemove: '已取消收藏',
+      exported: '导出成功',
+      searchPh: '搜索地址/名称...',
+      detailInfo: '基本信息',
+      noContracts: '暂无合约数据',
+      loadMoreBtn: '加载更多',
+      loadingMore: '加载中...',
+      codeCount: '{n} 个 Code',
+      contractCount: '{n} 个合约',
+    },
+    en: {
+      title: 'Paxi Contract Explorer',
+      statCodesLabel: 'Codes',
+      statContractsLabel: 'Contracts',
+      statFavLabel: 'Favorites',
+      statLoadedLabel: 'Loaded',
+      btnLoadText: 'Load All Contracts',
+      btnExportText: 'Export Favs',
+      btnExportAllText: 'Export All',
+      tabAll: 'All Contracts',
+      tabFav: 'Favorites',
+      sortCodeDesc: 'Code ID ↓',
+      sortCodeAsc: 'Code ID ↑',
+      sortNameAsc: 'Name A-Z',
+      loadingText: 'Loading contracts...',
+      loadMore: 'Load More',
+      favEmptyTip: 'No favorites yet',
+      copyOk: 'Copied',
+      dInfo: 'Info',
+      dTxs: 'Transactions',
+      dCode: 'Code',
+      dQuery: 'Smart Query',
+      lblAddr: 'Address',
+      lblLabel: 'Label',
+      lblCodeId: 'Code ID',
+      lblCreator: 'Creator',
+      lblAdmin: 'Admin',
+      lblInitMsg: 'Init Msg',
+      lblCreated: 'Created At',
+      lblCodeCreator: 'Uploader',
+      lblDataHash: 'Data Hash',
+      lblPerm: 'Instantiate Perm',
+      lblRawCode: 'Raw Code Info',
+      lblQueryMsg: 'Query Msg (JSON)',
+      lblQueryResult: 'Result',
+      btnExecQuery: 'Execute',
+      txEmpty: 'No transactions',
+      querying: 'Querying...',
+      queryFail: 'Query failed',
+      querySuccess: 'Success',
+      queryEmpty: 'Enter a query message',
+      queryInvalid: 'Invalid JSON',
+      invAddr: 'Invalid address',
+      favAdd: 'Added to favorites',
+      favRemove: 'Removed from favorites',
+      exported: 'Exported',
+      searchPh: 'Search address/name...',
+      detailInfo: 'Contract Info',
+      noContracts: 'No contracts found',
+      loadMoreBtn: 'Load More',
+      loadingMore: 'Loading...',
+      codeCount: '{n} Codes',
+      contractCount: '{n} Contracts',
+    }
+  };
+  let CURRENT_LANG = localStorage.getItem('ce_lang') || 'zh';
+  function t(k) { return (I18N[CURRENT_LANG] && I18N[CURRENT_LANG][k]) || (I18N.zh[k] || k); }
+  function applyI18n() {
+    document.documentElement.lang = CURRENT_LANG === 'zh' ? 'zh-CN' : 'en';
+    document.title = t('title');
+    document.getElementById('pageTitle').textContent = t('title');
+    document.getElementById('statCodesLabel').textContent = t('statCodesLabel');
+    document.getElementById('statContractsLabel').textContent = t('statContractsLabel');
+    document.getElementById('statFavLabel').textContent = t('statFavLabel');
+    document.getElementById('statLoadedLabel').textContent = t('statLoadedLabel');
+    document.getElementById('btnLoadText').textContent = t('btnLoadText');
+    document.getElementById('btnExportText').textContent = t('btnExportText');
+    document.getElementById('btnExportAllText').textContent = t('btnExportAllText');
+    document.getElementById('tabAll').textContent = t('tabAll');
+    document.getElementById('tabFav').textContent = t('tabFav');
+    document.getElementById('sortCodeDesc').textContent = t('sortCodeDesc');
+    document.getElementById('sortCodeAsc').textContent = t('sortCodeAsc');
+    document.getElementById('sortNameAsc').textContent = t('sortNameAsc');
+    document.getElementById('loadingText').textContent = t('loadingText');
+    document.getElementById('favEmptyTip').textContent = t('favEmptyTip');
+    document.getElementById('searchInput').placeholder = '🔍 ' + t('searchPh');
+    document.getElementById('btnLoadMore').textContent = t('loadMoreBtn');
+  }
+  function onLangChange() {
+    CURRENT_LANG = document.getElementById('langSel').value;
+    localStorage.setItem('ce_lang', CURRENT_LANG);
+    applyI18n();
+  }
+
+  // ---------- Network ----------
+  const NETWORKS = {
+    mainnet: {
+      lcd: 'https://mainnet-lcd.paxinet.io',
+      denom: 'upaxi',
+      chainId: 'paxi-mainnet',
+      display: 'PAXI',
+    },
+    testnet: {
+      lcd: 'https://testnet-lcd.paxinet.io',
+      denom: 'upaxi',
+      chainId: 'paxi-testnet',
+      display: 'tPAXI',
+    }
+  };
+  let CURRENT_NET = localStorage.getItem('ce_net') || 'mainnet';
+  function getCfg() { return NETWORKS[CURRENT_NET] || NETWORKS.mainnet; }
+  function onNetworkChange() {
+    CURRENT_NET = document.getElementById('networkSel').value;
+    localStorage.setItem('ce_net', CURRENT_NET);
+    // 重置数据，重新加载
+    allCodes = [];
+    allContracts = [];
+    currentPage = 1;
+    codePageKey = null;
+    hasMoreCodes = true;
+    currentCodeIndex = 0;
+    currentContractPageKey = null;
+    switchMainTab('all');
+    loadFirstBatch();
+  }
+
+  // ---------- State ----------
+  let allCodes = [];       // [{ id, creator, data_hash, instantiate_permission }]
+  let allContracts = [];   // [{ address, code_id, creator, admin, label }]
+  let currentPage = 1;
+  const PAGE_SIZE = 20;
+  let currentDetail = null;
+  let codePageKey = null;
+  let hasMoreCodes = true;
+  let currentCodeIndex = 0;
+  let currentContractPageKey = null;
+  let hasMoreContractsForCode = true;
+
+  const FAV_KEY = 'ce_favorites';
+  function getFavorites() {
+    try { return JSON.parse(localStorage.getItem(FAV_KEY) || '{}'); } catch(e) { return {}; }
+  }
+  function setFavorite(addr, contractData) {
+    const favs = getFavorites();
+    if (favs[addr]) {
+      delete favs[addr];
+      localStorage.setItem(FAV_KEY, JSON.stringify(favs));
+      showToast(t('favRemove'), 'success');
+      return false;
+    } else {
+      favs[addr] = contractData || { address: addr, addedAt: Date.now() };
+      localStorage.setItem(FAV_KEY, JSON.stringify(favs));
+      showToast(t('favAdd'), 'success');
+      return true;
+    }
+  }
+  function isFavorite(addr) {
+    return !!getFavorites()[addr];
+  }
+
+  // ---------- Utils ----------
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function shortAddr(a, n) {
+    if (!a) return '--';
+    n = n || 8;
+    if (a.length <= n * 2 + 3) return a;
+    return a.slice(0, n) + '...' + a.slice(-n);
+  }
+  function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(t('copyOk'), 'success');
+    }).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); showToast(t('copyOk'), 'success'); } catch(e) {}
+      document.body.removeChild(ta);
+    });
+  }
+  function showToast(msg, type) {
+    const old = document.getElementById('toastMsg');
+    if (old) old.remove();
+    const toast = document.createElement('div');
+    toast.id = 'toastMsg';
+    toast.className = 'toast ' + (type || '');
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; }, 2000);
+    setTimeout(() => toast.remove(), 2500);
+  }
+  function goBack() {
+    if (window.history.length > 1 && document.referrer) window.history.back();
+    else window.location.href = 'index.html';
+  }
+  function syntaxHighlight(obj) {
+    let json = JSON.stringify(obj, null, 2);
+    json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+      let cls = 'json-number';
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) cls = 'json-key';
+        else cls = 'json-string';
+      } else if (/true|false/.test(match)) cls = 'json-boolean';
+      else if (/null/.test(match)) cls = 'json-null';
+      return '<span class="' + cls + '">' + match + '</span>';
+    });
+  }
+
+  // ---------- 主 Tab 切换 ----------
+  function switchMainTab(tabName) {
+    document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector(`.tab[data-tab="${tabName}"]`)?.classList.add('active');
+    document.getElementById(`tab-${tabName}`)?.classList.add('active');
+    if (tabName === 'fav') renderFavList();
+  }
+
+  // ---------- 加载合约数据 ----------
+  async function loadAllContracts() {
+    const btn = document.getElementById('btnLoadAll');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> ' + t('loadingText');
+    document.getElementById('contractList').innerHTML = `
+      <div class="loading-state">
+        <div class="spinner" style="width:32px;height:32px;border-width:3px;"></div>
+        <div style="margin-top:10px;">${t('loadingText')}</div>
+        <div style="margin-top:8px;font-size:12px;color:var(--text-muted);" id="loadProgress"></div>
+      </div>`;
+
+    try {
+      const cfg = getCfg();
+      allCodes = [];
+      allContracts = [];
+
+      // 1. 获取所有 code
+      let codeKey = null;
+      let codePage = 0;
+      while (codePage < 20) { // 最多 20 页，防止无限循环
+        const url = `${cfg.lcd}/cosmwasm/wasm/v1/codes?pagination.limit=100${codeKey ? '&pagination.key=' + encodeURIComponent(codeKey) : ''}`;
+        document.getElementById('loadProgress').textContent = `加载 Code 列表... 第 ${codePage + 1} 页`;
+        const res = await fetch(url);
+        if (!res.ok) break;
+        const data = await res.json();
+        const codes = data.code_infos || data.codes || [];
+        for (const c of codes) {
+          allCodes.push({
+            id: c.code_id || c.id,
+            creator: c.creator || '',
+            data_hash: c.data_hash || '',
+            instantiate_permission: c.instantiate_permission || null,
+          });
+        }
+        codeKey = data.pagination?.next_key;
+        codePage++;
+        if (!codeKey) break;
+        await new Promise(r => setTimeout(r, 50));
+      }
+
+      // 2. 获取每个 code 下的合约
+      for (let i = 0; i < allCodes.length; i++) {
+        const code = allCodes[i];
+        document.getElementById('loadProgress').textContent =
+          `加载合约... Code #${code.id} (${i + 1}/${allCodes.length}) - 已加载 ${allContracts.length} 个合约`;
+        let contractKey = null;
+        let contractPage = 0;
+        while (contractPage < 10) {
+          const url = `${cfg.lcd}/cosmwasm/wasm/v1/code/${code.id}/contracts?pagination.limit=100${contractKey ? '&pagination.key=' + encodeURIComponent(contractKey) : ''}`;
+          try {
+            const res = await fetch(url);
+            if (!res.ok) break;
+            const data = await res.json();
+            const contracts = data.contracts || [];
+            for (const addr of contracts) {
+              allContracts.push({
+                address: addr,
+                code_id: code.id,
+                creator: code.creator,
+                label: '', // 需要单独查询才知道 label，先留空
+              });
+            }
+            contractKey = data.pagination?.next_key;
+            contractPage++;
+            if (!contractKey) break;
+          } catch(e) { break; }
+          await new Promise(r => setTimeout(r, 30));
+        }
+        updateStats();
+        renderContractList();
+        if (allContracts.length > 500) break; // 安全上限
+      }
+
+      // 更新统计
+      updateStats();
+      renderContractList();
+      document.getElementById('btnExportAll').style.display = 'inline-flex';
+    } catch (e) {
+      console.error('loadAllContracts error:', e);
+      document.getElementById('contractList').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">❌</div>
+          <div>${t('queryFail')}: ${escapeHtml(e.message || String(e))}</div>
+        </div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '🔄 ' + t('btnLoadText');
+    }
+  }
+
+  // 分批加载（首次加载 + 加载更多）
+  async function loadFirstBatch() {
+    const cfg = getCfg();
+    allCodes = [];
+    allContracts = [];
+    currentPage = 1;
+    codePageKey = null;
+    hasMoreCodes = true;
+    currentCodeIndex = 0;
+    currentContractPageKey = null;
+    hasMoreContractsForCode = true;
+
+    document.getElementById('contractList').innerHTML = `
+      <div class="loading-state">
+        <div class="spinner" style="width:32px;height:32px;border-width:3px;"></div>
+        <div style="margin-top:10px;">${t('loadingText')}</div>
+      </div>`;
+
+    try {
+      // 加载第一页 code
+      const url = `${cfg.lcd}/cosmwasm/wasm/v1/codes?pagination.limit=10`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const codes = data.code_infos || data.codes || [];
+      for (const c of codes) {
+        allCodes.push({
+          id: c.code_id || c.id,
+          creator: c.creator || '',
+          data_hash: c.data_hash || '',
+          instantiate_permission: c.instantiate_permission || null,
+        });
+      }
+      codePageKey = data.pagination?.next_key;
+      hasMoreCodes = !!codePageKey;
+
+      // 加载第一个 code 的第一页合约
+      if (allCodes.length > 0) {
+        await loadContractsForCode(0, null);
+      }
+
+      updateStats();
+      renderContractList();
+      document.getElementById('loadMoreWrap').style.display =
+        (hasMoreCodes || hasMoreContractsForCode) ? 'block' : 'none';
+    } catch (e) {
+      console.error('loadFirstBatch error:', e);
+      document.getElementById('contractList').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">❌</div>
+          <div>${t('queryFail')}: ${escapeHtml(e.message || String(e))}</div>
+        </div>`;
+    }
+  }
+
+  async function loadContractsForCode(codeIdx, pageKey) {
+    const cfg = getCfg();
+    const code = allCodes[codeIdx];
+    if (!code) return false;
+
+    const url = `${cfg.lcd}/cosmwasm/wasm/v1/code/${code.id}/contracts?pagination.limit=30${pageKey ? '&pagination.key=' + encodeURIComponent(pageKey) : ''}`;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return false;
+      const data = await res.json();
+      const contracts = data.contracts || [];
+      for (const addr of contracts) {
+        allContracts.push({
+          address: addr,
+          code_id: code.id,
+          creator: code.creator,
+          label: '',
+        });
+      }
+      currentContractPageKey = data.pagination?.next_key;
+      hasMoreContractsForCode = !!currentContractPageKey;
+      return true;
+    } catch(e) { return false; }
+  }
+
+  async function loadMoreContracts() {
+    const btn = document.getElementById('btnLoadMore');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> ' + t('loadingMore');
+
+    // 如果当前 code 还有下一页合约
+    if (hasMoreContractsForCode && currentCodeIndex < allCodes.length) {
+      await loadContractsForCode(currentCodeIndex, currentContractPageKey);
+    } else if (hasMoreCodes) {
+      // 加载下一页 code
+      const cfg = getCfg();
+      const url = `${cfg.lcd}/cosmwasm/wasm/v1/codes?pagination.limit=10${codePageKey ? '&pagination.key=' + encodeURIComponent(codePageKey) : ''}`;
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          const codes = data.code_infos || data.codes || [];
+          for (const c of codes) {
+            allCodes.push({
+              id: c.code_id || c.id,
+              creator: c.creator || '',
+              data_hash: c.data_hash || '',
+              instantiate_permission: c.instantiate_permission || null,
+            });
+          }
+          codePageKey = data.pagination?.next_key;
+          hasMoreCodes = !!codePageKey;
+          // 新加载的第一个 code
+          currentCodeIndex = allCodes.length - codes.length;
+          currentContractPageKey = null;
+          hasMoreContractsForCode = true;
+          await loadContractsForCode(currentCodeIndex, null);
+        }
+      } catch(e) { console.error(e); }
+    } else {
+      // 检查是否还有更多 code
+      currentCodeIndex++;
+      if (currentCodeIndex < allCodes.length) {
+        currentContractPageKey = null;
+        hasMoreContractsForCode = true;
+        await loadContractsForCode(currentCodeIndex, null);
+      }
+    }
+
+    updateStats();
+    renderContractList();
+
+    // 判断是否还有更多
+    const hasMore = hasMoreCodes || hasMoreContractsForCode || currentCodeIndex < allCodes.length - 1;
+    document.getElementById('loadMoreWrap').style.display = hasMore ? 'block' : 'none';
+
+    btn.disabled = false;
+    btn.innerHTML = t('loadMoreBtn');
+  }
+
+  function updateStats() {
+    document.getElementById('statCodes').textContent = allCodes.length || '--';
+    document.getElementById('statContracts').textContent = allContracts.length || '--';
+    document.getElementById('statLoaded').textContent = allContracts.length || '--';
+    document.getElementById('badgeAll').textContent = allContracts.length;
+    const favCount = Object.keys(getFavorites()).length;
+    document.getElementById('statFav').textContent = favCount;
+    document.getElementById('badgeFav').textContent = favCount;
+  }
+
+  // ---------- 渲染合约列表 ----------
+  function getFilteredContracts() {
+    const keyword = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+    const sort = document.getElementById('sortSelect')?.value || 'code_desc';
+    let list = allContracts;
+    if (keyword) {
+      list = list.filter(c =>
+        c.address.toLowerCase().includes(keyword) ||
+        (c.label || '').toLowerCase().includes(keyword) ||
+        String(c.code_id).includes(keyword)
+      );
+    }
+    const sorted = [...list];
+    switch (sort) {
+      case 'code_asc':
+        sorted.sort((a, b) => Number(a.code_id) - Number(b.code_id));
+        break;
+      case 'code_desc':
+        sorted.sort((a, b) => Number(b.code_id) - Number(a.code_id));
+        break;
+      case 'name_asc':
+        sorted.sort((a, b) => (a.label || '').localeCompare(b.label || ''));
+        break;
+    }
+    return sorted;
+  }
+
+  function renderContractList() {
+    const listEl = document.getElementById('contractList');
+    const list = getFilteredContracts();
+
+    if (!list.length && allContracts.length === 0) {
+      // 还在加载中或者没有数据，保持加载状态
+      return;
+    }
+    if (!list.length) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div>${t('noContracts')}</div></div>`;
+      return;
+    }
+
+    const totalPages = Math.ceil(list.length / PAGE_SIZE);
+    if (currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageItems = list.slice(start, start + PAGE_SIZE);
+
+    const favs = getFavorites();
+
+    listEl.innerHTML = `<div class="contract-list">
+      ${pageItems.map(c => {
+        const isFav = !!favs[c.address];
+        const label = c.label || 'Unnamed';
+        return `
+        <div class="contract-item" onclick="openDetail('${escapeHtml(c.address)}')">
+          <div class="contract-item-header">
+            <div class="contract-name" title="${escapeHtml(label)}">${escapeHtml(label)}</div>
+            <button class="fav-btn ${isFav ? 'active' : ''}"
+              onclick="event.stopPropagation();toggleFav('${escapeHtml(c.address)}', ${JSON.stringify(c).replace(/"/g, '&quot;')})"
+              title="${isFav ? '取消收藏' : '收藏'}">
+              ${isFav ? '⭐' : '☆'}
+            </button>
+          </div>
+          <div class="contract-addr" title="${escapeHtml(c.address)}">${escapeHtml(c.address)}</div>
+          <div class="contract-meta">
+            <span class="contract-tag">Code #${c.code_id}</span>
+            <span>👤 ${escapeHtml(shortAddr(c.creator, 6))}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="pagination">
+      <button class="btn btn-outline btn-sm" onclick="prevPage()" ${currentPage <= 1 ? 'disabled' : ''}>←</button>
+      <span class="page-info">${currentPage} / ${totalPages}</span>
+      <button class="btn btn-outline btn-sm" onclick="nextPage()" ${currentPage >= totalPages ? 'disabled' : ''}>→</button>
+    </div>`;
+  }
+
+  function prevPage() { if (currentPage > 1) { currentPage--; renderContractList(); } }
+  function nextPage() {
+    const list = getFilteredContracts();
+    const totalPages = Math.ceil(list.length / PAGE_SIZE);
+    if (currentPage < totalPages) { currentPage++; renderContractList(); }
+  }
+
+  // ---------- 收藏列表 ----------
+  function renderFavList() {
+    const favs = getFavorites();
+    const list = Object.entries(favs).map(([addr, data]) => ({
+      address: addr,
+      code_id: data.code_id || '--',
+      label: data.label || '',
+      creator: data.creator || '',
+    }));
+    const listEl = document.getElementById('favList');
+
+    if (!list.length) {
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">⭐</div><div>${t('favEmptyTip')}</div></div>`;
+      return;
+    }
+
+    listEl.innerHTML = `<div class="contract-list">
+      ${list.map(c => {
+        const label = c.label || 'Unnamed';
+        return `
+        <div class="contract-item" onclick="openDetail('${escapeHtml(c.address)}')">
+          <div class="contract-item-header">
+            <div class="contract-name" title="${escapeHtml(label)}">${escapeHtml(label)}</div>
+            <button class="fav-btn active"
+              onclick="event.stopPropagation();toggleFav('${escapeHtml(c.address)}')"
+              title="取消收藏">⭐</button>
+          </div>
+          <div class="contract-addr" title="${escapeHtml(c.address)}">${escapeHtml(c.address)}</div>
+          <div class="contract-meta">
+            <span class="contract-tag">Code #${c.code_id}</span>
+            <span>👤 ${escapeHtml(shortAddr(c.creator, 6))}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  function toggleFav(addr, contractData) {
+    const result = setFavorite(addr, contractData);
+    updateStats();
+    renderContractList();
+    // 如果当前在详情页也更新
+    if (currentDetail === addr) {
+      const btn = document.getElementById('detailFavBtn');
+      if (btn) btn.textContent = result ? '⭐' : '☆';
+    }
+  }
+
+  function toggleFavCurrent() {
+    if (!currentDetail) return;
+    const contract = allContracts.find(c => c.address === currentDetail) || { address: currentDetail };
+    toggleFav(currentDetail, contract);
+  }
+
+  // ---------- 合约详情 ----------
+  async function openDetail(addr) {
+    currentDetail = addr;
+    const modal = document.getElementById('detailModal');
+    const favBtn = document.getElementById('detailFavBtn');
+    favBtn.textContent = isFavorite(addr) ? '⭐' : '☆';
+    document.getElementById('detailTitle').textContent = shortAddr(addr, 10);
+
+    document.getElementById('detailBody').innerHTML = `
+      <div style="text-align:center;padding:20px;">
+        <div class="spinner" style="width:24px;height:24px;border-width:3px;"></div>
+        <div style="margin-top:8px;font-size:13px;color:var(--text-muted);">${t('querying')}</div>
+      </div>`;
+    modal.classList.add('show');
+
+    try {
+      const cfg = getCfg();
+      const url = `${cfg.lcd}/cosmwasm/wasm/v1/contract/${addr}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const info = data.contract_info || data;
+
+      // 更新 allContracts 中的 label
+      const idx = allContracts.findIndex(c => c.address === addr);
+      if (idx >= 0) {
+        allContracts[idx].label = info.label || '';
+        allContracts[idx].admin = info.admin || '';
+        allContracts[idx].creator = info.creator || allContracts[idx].creator;
+      }
+
+      renderDetailBody(addr, info);
+      renderContractList();
+    } catch (e) {
+      document.getElementById('detailBody').innerHTML = `
+        <div style="text-align:center;padding:20px;color:var(--danger);">
+          ❌ ${t('queryFail')}: ${escapeHtml(e.message || String(e))}
+        </div>`;
+    }
+  }
+
+  function renderDetailBody(addr, info) {
+    const label = info.label || 'Unnamed';
+    document.getElementById('detailTitle').textContent = label;
+    document.getElementById('detailIcon').textContent = '📄';
+
+    document.getElementById('detailBody').innerHTML = `
+      <div class="detail-tabs">
+        <div class="detail-tab active" data-dtab="info" onclick="switchDetailTab('info')">${t('dInfo')}</div>
+        <div class="detail-tab" data-dtab="txs" onclick="switchDetailTab('txs')">${t('dTxs')}</div>
+        <div class="detail-tab" data-dtab="code" onclick="switchDetailTab('code')">${t('dCode')}</div>
+        <div class="detail-tab" data-dtab="query" onclick="switchDetailTab('query')">${t('dQuery')}</div>
+      </div>
+
+      <div class="detail-tab-content active" id="dtab-info">
+        <div class="info-grid">
+          <div class="info-label">${t('lblAddr')}</div>
+          <div class="info-value">${escapeHtml(addr)}
+            <button class="copy-btn" onclick="copyText('${escapeHtml(addr)}')">📋</button>
+          </div>
+          <div class="info-label">${t('lblLabel')}</div>
+          <div class="info-value plain">${escapeHtml(label)}</div>
+          <div class="info-label">${t('lblCodeId')}</div>
+          <div class="info-value plain">#${escapeHtml(info.code_id || '--')}</div>
+          <div class="info-label">${t('lblCreator')}</div>
+          <div class="info-value">${escapeHtml(info.creator || '--')}</div>
+          <div class="info-label">${t('lblAdmin')}</div>
+          <div class="info-value">${escapeHtml(info.admin || 'None')}</div>
+        </div>
+      </div>
+
+      <div class="detail-tab-content" id="dtab-txs">
+        <div id="detailTxList">
+          <div style="text-align:center;padding:20px;">
+            <button class="btn btn-primary btn-sm" onclick="loadDetailTxs()">🔄 ${t('btnLoadText')}</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-tab-content" id="dtab-code">
+        <div id="detailCodeInfo">
+          <div style="text-align:center;padding:20px;">
+            <button class="btn btn-primary btn-sm" onclick="loadDetailCodeInfo('${info.code_id}')">🔄 ${t('btnLoadText')}</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-tab-content" id="dtab-query">
+        <div class="form-label">${t('lblQueryMsg')}</div>
+        <div class="query-templates">
+          <span class="query-tpl" onclick="fillDetailQuery('config')">{config: {}}</span>
+          <span class="query-tpl" onclick="fillDetailQuery('token_info')">{token_info: {}}</span>
+          <span class="query-tpl" onclick="fillDetailQuery('minter')">{minter: {}}</span>
+          <span class="query-tpl" onclick="fillDetailQuery('num_tokens')">{num_tokens: {}}</span>
+          <span class="query-tpl" onclick="fillDetailQuery('contract_info')">{contract_info: {}}</span>
+          <span class="query-tpl" onclick="fillDetailQuery('all_tokens')">{all_tokens: {limit:10}}</span>
+        </div>
+        <textarea id="detailQueryMsg" rows="4" placeholder='{"config": {}}'>{"contract_info": {}}</textarea>
+        <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="executeDetailQuery()" id="btnDetailExec">
+          ⚡ ${t('btnExecQuery')}
+        </button>
+        <div id="detailQueryResult" style="margin-top:12px;display:none;">
+          <div class="form-label">${t('lblQueryResult')}</div>
+          <div class="json-box" id="detailQueryResultJson"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  function switchDetailTab(tabName) {
+    document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.detail-tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector(`.detail-tab[data-dtab="${tabName}"]`)?.classList.add('active');
+    document.getElementById(`dtab-${tabName}`)?.classList.add('active');
+  }
+
+  function closeDetail() {
+    document.getElementById('detailModal').classList.remove('show');
+    currentDetail = null;
+  }
+
+  // ---------- 详情 - 交易 ----------
+  async function loadDetailTxs() {
+    if (!currentDetail) return;
+    const cfg = getCfg();
+    const events = [`wasm._contract_address='${currentDetail}'`];
+    const url = `${cfg.lcd}/cosmos/tx/v1beta1/txs?events=${encodeURIComponent(events[0])}&pagination.limit=20&order_by=ORDER_BY_DESC`;
+
+    document.getElementById('detailTxList').innerHTML = `
+      <div style="text-align:center;padding:20px;">
+        <div class="spinner"></div>
+        <div style="margin-top:8px;font-size:12px;color:var(--text-muted);">${t('querying')}</div>
+      </div>`;
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const txs = data.tx_responses || [];
+
+      if (!txs.length) {
+        document.getElementById('detailTxList').innerHTML = `
+          <div class="empty-state"><div class="empty-icon">📜</div><div>${t('txEmpty')}</div></div>`;
+        return;
+      }
+
+      document.getElementById('detailTxList').innerHTML = txs.map(tx => {
+        const hash = tx.txhash || '';
+        const height = tx.height || '--';
+        const code = Number(tx.code || 0);
+        const statusClass = code === 0 ? 'success' : 'failed';
+        const statusText = code === 0 ? 'Success' : 'Failed';
+        const timestamp = tx.timestamp ? tx.timestamp.replace('T', ' ').slice(0, 19) : '';
+        const gasUsed = tx.gas_used || 0;
+        const msgs = tx.tx?.body?.messages || [];
+        const msgSummary = msgs.map(m => (m['@type'] || '').split('.').pop() || 'Msg').join(', ');
+
+        return `
+        <div class="tx-item">
+          <div class="tx-header">
+            <div class="tx-hash" title="${escapeHtml(hash)}">${escapeHtml(hash.slice(0, 12) + '...' + hash.slice(-6))}</div>
+            <span class="tx-status ${statusClass}">${statusText}</span>
+          </div>
+          <div class="tx-meta">
+            <span>📍 #${escapeHtml(height)}</span>
+            <span>🕐 ${escapeHtml(timestamp || '--')}</span>
+            <span>⛽ ${escapeHtml(gasUsed)}</span>
+          </div>
+          <div style="margin-top:6px;font-size:10px;color:var(--text-muted);">
+            📦 ${msgs.length} msg(s): ${escapeHtml(msgSummary)}
+          </div>
+        </div>`;
+      }).join('');
+    } catch (e) {
+      document.getElementById('detailTxList').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">❌</div>
+          <div>${t('queryFail')}: ${escapeHtml(e.message || String(e))}</div>
+        </div>`;
+    }
+  }
+
+  // ---------- 详情 - 代码 ----------
+  async function loadDetailCodeInfo(codeId) {
+    const cfg = getCfg();
+    document.getElementById('detailCodeInfo').innerHTML = `
+      <div style="text-align:center;padding:20px;">
+        <div class="spinner"></div>
+        <div style="margin-top:8px;font-size:12px;color:var(--text-muted);">${t('querying')}</div>
+      </div>`;
+
+    try {
+      const url = `${cfg.lcd}/cosmwasm/wasm/v1/code/${codeId}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const codeInfo = data.code_info || data;
+
+      const perm = codeInfo.instantiate_permission;
+      let permStr = perm?.permission || '--';
+      if (perm?.addresses && perm.addresses.length) {
+        permStr += ` (${perm.addresses.length} addresses)`;
+      }
+
+      document.getElementById('detailCodeInfo').innerHTML = `
+        <div class="info-grid" style="margin-bottom:12px;">
+          <div class="info-label">${t('lblCodeId')}</div>
+          <div class="info-value plain">#${escapeHtml(codeInfo.code_id || codeId)}</div>
+          <div class="info-label">${t('lblCodeCreator')}</div>
+          <div class="info-value">${escapeHtml(codeInfo.creator || '--')}</div>
+          <div class="info-label">${t('lblDataHash')}</div>
+          <div class="info-value">${escapeHtml(codeInfo.data_hash || '--')}</div>
+          <div class="info-label">${t('lblPerm')}</div>
+          <div class="info-value plain">${escapeHtml(permStr)}</div>
+        </div>
+        <div class="form-label">${t('lblRawCode')}</div>
+        <div class="json-box">${syntaxHighlight(codeInfo)}</div>
+      `;
+    } catch (e) {
+      document.getElementById('detailCodeInfo').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">❌</div>
+          <div>${t('queryFail')}: ${escapeHtml(e.message || String(e))}</div>
+        </div>`;
+    }
+  }
+
+  // ---------- 详情 - 智能查询 ----------
+  function fillDetailQuery(type) {
+    const templates = {
+      config: '{"config": {}}',
+      token_info: '{"token_info": {}}',
+      minter: '{"minter": {}}',
+      num_tokens: '{"num_tokens": {}}',
+      all_tokens: '{"all_tokens": {"limit": 10}}',
+      contract_info: '{"contract_info": {}}',
+    };
+    document.getElementById('detailQueryMsg').value = templates[type] || '{}';
+  }
+
+  async function executeDetailQuery() {
+    const msgStr = document.getElementById('detailQueryMsg').value.trim();
+    if (!msgStr) { showToast(t('queryEmpty'), 'error'); return; }
+    let msgObj;
+    try { msgObj = JSON.parse(msgStr); } catch(e) { showToast(t('queryInvalid'), 'error'); return; }
+    if (!currentDetail) return;
+
+    const btn = document.getElementById('btnDetailExec');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> ' + t('querying');
+    document.getElementById('detailQueryResult').style.display = 'none';
+
+    try {
+      const cfg = getCfg();
+      const encoded = btoa(JSON.stringify(msgObj));
+      const url = `${cfg.lcd}/cosmwasm/wasm/v1/contract/${currentDetail}/smart/${encoded}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || errData.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const result = data.data ? (typeof data.data === 'string' ? atob(data.data) : JSON.stringify(data.data, null, 2)) : JSON.stringify(data, null, 2);
+      let resultObj;
+      try { resultObj = JSON.parse(result); } catch(e) { resultObj = result; }
+
+      document.getElementById('detailQueryResultJson').innerHTML =
+        typeof resultObj === 'object' ? syntaxHighlight(resultObj) : escapeHtml(result);
+      document.getElementById('detailQueryResult').style.display = 'block';
+    } catch (e) {
+      showToast(t('queryFail') + ': ' + (e.message || String(e)), 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '⚡ ' + t('btnExecQuery');
+    }
+  }
+
+  // ---------- 导出 ----------
+  function exportFav(format) {
+    const favs = getFavorites();
+    const list = Object.entries(favs).map(([addr, data]) => ({
+      address: addr,
+      label: data.label || '',
+      code_id: data.code_id || '',
+      creator: data.creator || '',
+      addedAt: data.addedAt ? new Date(data.addedAt).toISOString() : '',
+    }));
+
+    if (!list.length) { showToast(t('favEmptyTip'), 'warning'); return; }
+
+    if (format === 'json') {
+      const blob = new Blob([JSON.stringify(list, null, 2)], { type: 'application/json' });
+      downloadBlob(blob, `paxi-favorites-${CURRENT_NET}-${Date.now()}.json`);
+    } else {
+      const header = ['Address', 'Label', 'Code ID', 'Creator', 'Added At'];
+      const rows = list.map(c => [c.address, c.label, c.code_id, c.creator, c.addedAt]);
+      const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+      downloadBlob(blob, `paxi-favorites-${CURRENT_NET}-${Date.now()}.csv`);
+    }
+    showToast(t('exported'), 'success');
+  }
+
+  function exportAllFav() { exportFav('json'); }
+
+  function exportAllContracts() {
+    if (!allContracts.length) { showToast(t('noContracts'), 'warning'); return; }
+    const data = allContracts.map(c => ({
+      address: c.address,
+      code_id: c.code_id,
+      label: c.label || '',
+      creator: c.creator || '',
+    }));
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    downloadBlob(blob, `paxi-contracts-${CURRENT_NET}-${Date.now()}.json`);
+    showToast(t('exported'), 'success');
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ---------- Init ----------
+  function init() {
+    document.getElementById('langSel').value = CURRENT_LANG;
+    document.getElementById('networkSel').value = CURRENT_NET;
+    applyI18n();
+    updateStats();
+    loadFirstBatch();
+  }
+  init();
+  </script>
+
+
+</body></html>
